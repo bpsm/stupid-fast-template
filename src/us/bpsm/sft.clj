@@ -45,12 +45,12 @@ param-fn is a function that maps from keywords to strings. The result of
     apply-template to throw an exception.
 
 The result of apply-template is a string."
-  (apply str 
-         (for [piece parsed-template]
+  (->> (for [piece parsed-template]
            (if-not (keyword? piece)
              piece
              (if-let [param-value (param-fn piece)]
                param-value
-               (throw (ex-info "Unsupported template parameter" 
+               (throw (ex-info "Required template parameter is missing."
                                {::param-name piece
-                                ::param-fn param-fn})))))))
+                                ::param-fn param-fn}))))) 
+       (apply str)))
