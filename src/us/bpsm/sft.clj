@@ -54,3 +54,11 @@ The result of apply-template is a string."
                                {::param-name piece
                                 ::param-fn param-fn}))))) 
        (apply str)))
+
+(defn template-fn*
+  "Given a template as a string, return a function which accepts a param-fn
+and returns a string with all params in template replaced by values provided
+by param-fn."
+  [template]
+  (partial apply-template (parse-template template)))
+

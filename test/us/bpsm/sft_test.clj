@@ -17,3 +17,11 @@
        "Hello Ben!" "Hello «Name»!" {:Name "Ben"}
        "Hello Ben!" "«Greeting» «Name»!" {:Greeting "Hello" :Name "Ben"}
        "bigLITTLE" "«BIG»«little»" {:BIG "big" :little "LITTLE"}))
+
+(deftest test-template-fn*
+  (are [result template param-fn] (= result ((template-fn* template) param-fn))
+       "" "" {}
+       "Hello World!" "Hello World!" {}
+       "Hello Ben!" "Hello «Name»!" {:Name "Ben"}
+       "Hello Ben!" "«Greeting» «Name»!" {:Greeting "Hello" :Name "Ben"}
+       "bigLITTLE" "«BIG»«little»" {:BIG "big" :little "LITTLE"}))
