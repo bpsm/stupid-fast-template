@@ -1,4 +1,5 @@
 (ns us.bpsm.sft-test
+  (:refer-clojure :exclude [slurp])
   (:use clojure.test
         us.bpsm.sft))
 
@@ -25,3 +26,12 @@
        "Hello Ben!" "Hello «Name»!" {:Name "Ben"}
        "Hello Ben!" "«Greeting» «Name»!" {:Greeting "Hello" :Name "Ben"}
        "bigLITTLE" "«BIG»«little»" {:BIG "big" :little "LITTLE"}))
+
+(deftest test-template-fn
+  (are [result template param-fn] 
+    (= result ((template-fn :from-string template) param-fn))
+    "" "" {}
+    "Hello World!" "Hello World!" {}
+    "Hello Ben!" "Hello «Name»!" {:Name "Ben"}
+    "Hello Ben!" "«Greeting» «Name»!" {:Greeting "Hello" :Name "Ben"}
+    "bigLITTLE" "«BIG»«little»" {:BIG "big" :little "LITTLE"}))

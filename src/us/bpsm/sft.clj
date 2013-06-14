@@ -1,5 +1,8 @@
 (ns us.bpsm.sft
-  (:require [clojure.string :as string]))
+  (:refer-clojure :exclude [slurp])
+  (:require [clojure.string :as string]
+            [clojure.java.io :as jio])
+  (:import [java.net URL]))
 
 ;;; What a template is:
 ;;;
@@ -34,6 +37,12 @@
        (flatten)
        (remove #(or (nil? %) (= "" %)))))
 
+(defn ex-missing-param 
+  [param-name param-fn]
+  (ex-info "Required template parameter is missing."
+           {::param-name param-name
+            ::param-fn param-fn}))
+
 (defn apply-template [parsed-template param-fn]
   "Apply the parsed-template by calling f to provide the missing values.
 
@@ -50,9 +59,7 @@ The result of apply-template is a string."
              piece
              (if-let [param-value (param-fn piece)]
                param-value
-               (throw (ex-info "Required template parameter is missing."
-                               {::param-name piece
-                                ::param-fn param-fn}))))) 
+               (throw (ex-missing-param piece param-fn)))))
        (apply str)))
 
 (defn template-fn*
@@ -62,3 +69,43 @@ by param-fn."
   [template]
   (partial apply-template (parse-template template)))
 
+(defmulti slurp
+  (fn [source-type source] source-type))
+
+(defmethod slurp :from-url
+  [_ source]
+  (clojure.core/slurp (URL. source)))
+
+(defmethod slurp :from-resource 
+  [_ source]
+  (clojure.core/slurp (jio/resource source)))
+
+(defmethod slurp :from-file
+  [_ source]
+  (clojure.core/slurp (jio/file source)))
+
+(defmethod slurp :from-string
+  [_ source]
+  source)
+
+(defmacro template-fn
+  "Create a function of one argument which implements the tempalte identified by
+source-type and source."
+  [source-type source]
+  (if-not (and (keyword? source-type) (string? source))
+    `(template-fn* (slurp ~source-type ~source))
+    (let [parsed-template (parse-template (slurp source-type source))
+          params (set (filter keyword? parsed-template))
+          param-fn (gensym)]
+      `(fn [~param-fn]
+         (let [~@(interleave 
+                  (for [p params]  (symbol (name p)))
+                  (for [p params] `(~param-fn ~p)))]
+           ~@(when clojure.core/*assert*
+               (for [p params]
+                 `(when (nil? ~(symbol (name p)))
+                    (throw (ex-missing-param ~p ~param-fn)))))
+           (str ~@(for [p parsed-template]
+                    (if (keyword? p)
+                      (symbol (name p))
+                      p))))))))
