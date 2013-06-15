@@ -47,19 +47,19 @@ The result of apply-template is a string."
 (defmulti slurp
   (fn [source-type source] source-type))
 
-(defmethod slurp :from-url
+(defmethod slurp :url
   [_ source]
   (clojure.core/slurp (URL. source)))
 
-(defmethod slurp :from-resource 
+(defmethod slurp :rsrc 
   [_ source]
   (clojure.core/slurp (jio/resource source)))
 
-(defmethod slurp :from-file
+(defmethod slurp :file
   [_ source]
   (clojure.core/slurp (jio/file source)))
 
-(defmethod slurp :from-string
+(defmethod slurp :string
   [_ source]
   source)
 

@@ -29,7 +29,7 @@
 
 (deftest test-template-fn
   (are [result template param-fn] 
-    (= result ((template-fn :from-string template) param-fn))
+    (= result ((template-fn :string template) param-fn))
     "" "" {}
     "Hello World!" "Hello World!" {}
     "Hello Ben!" "Hello «Name»!" {:Name "Ben"}
