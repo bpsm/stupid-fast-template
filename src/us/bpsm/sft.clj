@@ -66,7 +66,10 @@ The result of apply-template is a string."
 (defn template-fn*
   "Given a template as a string, return a function which accepts a param-fn
 and returns a string with all params in template replaced by values provided
-by param-fn."
+by param-fn.
+
+source-type is a keyword for which an implementation of us.bpsm.sft/slurp
+is defined."
   ([template]
      (partial apply-template (parse-template template)))
   ([source-type source]
@@ -86,7 +89,10 @@ it will be parsed at compile time in order to emit a more efficient
 implementation of the resulting template-fn.
 
 Otherwise, this macro emits code which calls slurp and template-fn* at
-runtime."
+runtime.
+
+source-type is a keyword for which an implementation of us.bpsm.sft/slurp
+is defined."
   ([template]
      (if-not (string? template)
        `(template-fn* ~template)
@@ -109,4 +115,3 @@ runtime."
      (if-not (and (keyword? source-type) (string? source))
        `(template-fn* ~source-type ~source)
        `(template-fn ~(slurp source-type source)))))
-
