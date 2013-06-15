@@ -73,29 +73,40 @@ by param-fn."
      (template-fn* (slurp source-type source))))
 
 (defmacro template-fn
-  "Create a function of one argument which implements the tempalte identified by
-source-type and source.
+  "Create a function of one argument which implements the tempalte
+identified by source-type and source.
 
-If source-type and source are both literals, then the template will be slurped
-and parsed at compile time in order to emit a more efficient implementation of
-the resulting template-fn.
+If called with two arguments: source-type and source that are both
+literals, the template will be slurped and parsed at compile time in
+order to emit a more efficient implementation of the resulting
+template-fn.
 
-Otherwise, this macro emits code which calls slurp and template-fn* at runtime."
-  [source-type source]
-  (if-not (and (keyword? source-type) (string? source))
-    `(template-fn* ~source-type ~source)
-    (let [parsed-template (parse-template (slurp source-type source))
-          params (set (filter keyword? parsed-template))
-          param-fn (gensym)]
-      `(fn [~param-fn]
-         (let [~@(interleave 
-                  (for [p params]  (symbol (name p)))
-                  (for [p params] `(~param-fn ~p)))]
-           ~@(when clojure.core/*assert*
-               (for [p params]
-                 `(when (nil? ~(symbol (name p)))
-                    (throw (ex-missing-param ~p ~param-fn)))))
-           (str ~@(for [p parsed-template]
-                    (if (keyword? p)
-                      (symbol (name p))
-                      p))))))))
+If called with a single argument: template that is a string literal,
+it will be parsed at compile time in order to emit a more efficient
+implementation of the resulting template-fn.
+
+Otherwise, this macro emits code which calls slurp and template-fn* at
+runtime."
+  ([template]
+     (if-not (string? template)
+       `(template-fn* ~template)
+       (let [parsed-template (parse-template template)
+             params (set (filter keyword? parsed-template))
+             param-fn (gensym)]
+         `(fn [~param-fn]
+            (let [~@(interleave 
+                     (for [p params]  (symbol (name p)))
+                     (for [p params] `(~param-fn ~p)))]
+              ~@(when clojure.core/*assert*
+                  (for [p params]
+                    `(when (nil? ~(symbol (name p)))
+                       (throw (ex-missing-param ~p ~param-fn)))))
+              (str ~@(for [p parsed-template]
+                       (if (keyword? p)
+                         (symbol (name p))
+                         p))))))))
+  ([source-type source]
+     (if-not (and (keyword? source-type) (string? source))
+       `(template-fn* ~source-type ~source)
+       `(template-fn ~(slurp source-type source)))))
+
