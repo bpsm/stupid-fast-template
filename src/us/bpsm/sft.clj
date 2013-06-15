@@ -4,32 +4,10 @@
             [clojure.java.io :as jio])
   (:import [java.net URL]))
 
-;;; What a template is:
-;;;
-;;; A template is a function which takes a function mapping keywords
-;;; to strings and returns a string.
-;;;
-;;; We write a template as a string thus:
-;;;
-;;;    Hello World!
-;;;
-;;; This template is equivalent to this function:
-;;;
-;;;    (fn [_] "Hello World!")
-;;;
-;;; Templates can use named parameters, as in this example:
-;;;
-;;;    Hello «Name»!
-;;;
-;;; This template is equivalent to this function:
-;;;
-;;;    (fn [f] (str "Hello " (f :Name) "!"))
-;;;
-;;; Templates, since they are just text, can be specified in code as
-;;; string literals. They can also be loaded from files.
-
 (defn parse-template
-  "Parse the template txt, producing a sequence of strings and keywords."
+  "Parse the template txt, producing a sequence of strings and keywords.
+
+The keywords are named by regions of txt delimited by « and »."
   [txt]
   (->> (clojure.string/split txt #"[«»]")
        (partition 2 2 nil)
@@ -37,7 +15,10 @@
        (flatten)
        (remove #(or (nil? %) (= "" %)))))
 
-(defn ex-missing-param 
+(defn ex-missing-param
+  "Construct an ex-info to report a missing template parameter, i.e.
+When we try to apply a template requiring some paramter :A to a
+param-fn which return nil for :A. "
   [param-name param-fn]
   (ex-info "Required template parameter is missing."
            {::param-name param-name
