@@ -44,13 +44,6 @@ The result of apply-template is a string."
                  param-value))))
        (apply str))) 
 
-(defn template-fn*
-  "Given a template as a string, return a function which accepts a param-fn
-and returns a string with all params in template replaced by values provided
-by param-fn."
-  [template]
-  (partial apply-template (parse-template template)))
-
 (defmulti slurp
   (fn [source-type source] source-type))
 
@@ -70,6 +63,15 @@ by param-fn."
   [_ source]
   source)
 
+(defn template-fn*
+  "Given a template as a string, return a function which accepts a param-fn
+and returns a string with all params in template replaced by values provided
+by param-fn."
+  ([template]
+     (partial apply-template (parse-template template)))
+  ([source-type source]
+     (template-fn* (slurp source-type source))))
+
 (defmacro template-fn
   "Create a function of one argument which implements the tempalte identified by
 source-type and source.
@@ -81,7 +83,7 @@ the resulting template-fn.
 Otherwise, this macro emits code which calls slurp and template-fn* at runtime."
   [source-type source]
   (if-not (and (keyword? source-type) (string? source))
-    `(template-fn* (slurp ~source-type ~source))
+    `(template-fn* ~source-type ~source)
     (let [parsed-template (parse-template (slurp source-type source))
           params (set (filter keyword? parsed-template))
           param-fn (gensym)]
