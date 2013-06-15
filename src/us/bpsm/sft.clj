@@ -91,7 +91,13 @@ by param-fn."
 
 (defmacro template-fn
   "Create a function of one argument which implements the tempalte identified by
-source-type and source."
+source-type and source.
+
+If source-type and source are both literals, then the template will be slurped
+and parsed at compile time in order to emit a more efficient implementation of
+the resulting template-fn.
+
+Otherwise, this macro emits code which calls slurp and template-fn* at runtime."
   [source-type source]
   (if-not (and (keyword? source-type) (string? source))
     `(template-fn* (slurp ~source-type ~source))
