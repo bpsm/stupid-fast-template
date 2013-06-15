@@ -57,10 +57,11 @@ The result of apply-template is a string."
   (->> (for [piece parsed-template]
            (if-not (keyword? piece)
              piece
-             (if-let [param-value (param-fn piece)]
-               param-value
-               (throw (ex-missing-param piece param-fn)))))
-       (apply str)))
+             (let [param-value (param-fn piece)]
+               (if (nil? param-value)
+                 (throw (ex-missing-param piece param-fn))
+                 param-value))))
+       (apply str))) 
 
 (defn template-fn*
   "Given a template as a string, return a function which accepts a param-fn
