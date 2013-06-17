@@ -98,20 +98,27 @@ is defined."
        `(template-fn* ~template)
        (let [parsed-template (parse-template template)
              params (set (filter keyword? parsed-template))
-             param-fn (gensym)]
+             param-fn (gensym)
+             literals-length (->> parsed-template
+                                  (filter string?)
+                                  (map count)
+                                  (reduce + 0))]
          `(fn [~param-fn]
-            (let [~@(interleave 
+            (let [~@(interleave
                      (for [p params]  (symbol (name p)))
                      (for [p params] `(~param-fn ~p)))]
               ~@(when clojure.core/*assert*
                   (for [p params]
                     `(when (nil? ~(symbol (name p)))
                        (throw (ex-missing-param ~p ~param-fn)))))
-              (str (doto (StringBuilder.)
-                     ~@(for [p parsed-template]
-                         `(.append ~(if (keyword? p)
-                                      (symbol (name p))
-                                      p))))))))))
+              (str
+               (doto (StringBuilder. (+ ~literals-length
+                                        ~@(for [p (filter keyword? parsed-template)]
+                                            `(count ~(symbol (name p))))))
+                 ~@(for [p parsed-template]
+                     `(.append ~(if (keyword? p)
+                                  (symbol (name p))
+                                  p))))))))))
   ([source-type source]
      (if-not (and (keyword? source-type) (string? source))
        `(template-fn* ~source-type ~source)
