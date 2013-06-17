@@ -107,10 +107,11 @@ is defined."
                   (for [p params]
                     `(when (nil? ~(symbol (name p)))
                        (throw (ex-missing-param ~p ~param-fn)))))
-              (str ~@(for [p parsed-template]
-                       (if (keyword? p)
-                         (symbol (name p))
-                         p))))))))
+              (str (doto (StringBuilder.)
+                     ~@(for [p parsed-template]
+                         `(.append ~(if (keyword? p)
+                                      (symbol (name p))
+                                      p))))))))))
   ([source-type source]
      (if-not (and (keyword? source-type) (string? source))
        `(template-fn* ~source-type ~source)
