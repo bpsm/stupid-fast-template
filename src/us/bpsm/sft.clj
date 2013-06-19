@@ -75,6 +75,48 @@ is defined."
   ([source-type source]
      (template-fn* (slurp source-type source))))
 
+(defn literals-length 
+  "The sum of the lengths of all strings in the parsed template. (This
+  is the length of the template's expansion provided all parameters
+  evaluate to the emtpy string.)" 
+  [parsed-template]
+  (->> parsed-template
+       (filter string?)
+       (map count)
+       (reduce + 0)))
+
+(defn keyword->symbol 
+  [k]
+  (symbol (name k)))
+
+(defn params
+  "Return a map of param names (keywords) to symbols with the same name."
+  [parsed-template]
+  (->> parsed-template
+       (filter keyword?)
+       (map #(vector % (keyword->symbol %)))
+       (into {})))
+
+(defn param-counts
+  "Return a map of param names (keywords) to the number of times they
+appear in parsed-template."
+  [parsed-template]
+  (->> parsed-template
+       (filter keyword?)
+       frequencies))
+
+(defn expected-length-expression
+  "Return an arithmetic expression which will compute the exact length
+of the expanded template, under the assumption that each of its parameters
+will be bound to a symbol of the same name in the scope in which this
+expression will be evaluated."
+  [parsed-template]
+  `(+ ~(literals-length parsed-template)
+      ~@(for [[p n] (param-counts parsed-template)]
+          (if  (= 1 n)
+            `(count ~(keyword->symbol p))
+            `(* ~n (count ~(keyword->symbol p)))))))
+
 (defmacro template-fn
   "Create a function of one argument which implements the tempalte
 identified by source-type and source.
@@ -97,27 +139,21 @@ is defined."
      (if-not (string? template)
        `(template-fn* ~template)
        (let [parsed-template (parse-template template)
-             params (set (filter keyword? parsed-template))
-             param-fn (gensym)
-             literals-length (->> parsed-template
-                                  (filter string?)
-                                  (map count)
-                                  (reduce + 0))]
+             params (params parsed-template)
+             param-fn (gensym)]
          `(fn [~param-fn]
             (let [~@(interleave
-                     (for [p params]  (symbol (name p)))
-                     (for [p params] `(~param-fn ~p)))]
+                     (for [[k s] params]  s)
+                     (for [[k s] params] `(~param-fn ~k)))]
               ~@(when clojure.core/*assert*
-                  (for [p params]
-                    `(when (nil? ~(symbol (name p)))
-                       (throw (ex-missing-param ~p ~param-fn)))))
+                  (for [[k s] params]
+                    `(when (nil? ~s)
+                       (throw (ex-missing-param ~k ~param-fn)))))
               (str
-               (doto (StringBuilder. (+ ~literals-length
-                                        ~@(for [p (filter keyword? parsed-template)]
-                                            `(count ~(symbol (name p))))))
+               (doto (StringBuilder. ~(expected-length-expression parsed-template))
                  ~@(for [p parsed-template]
                      `(.append ~(if (keyword? p)
-                                  (symbol (name p))
+                                  (params p)
                                   p))))))))))
   ([source-type source]
      (if-not (and (keyword? source-type) (string? source))
