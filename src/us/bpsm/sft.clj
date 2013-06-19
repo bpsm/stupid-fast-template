@@ -75,7 +75,7 @@ is defined."
   ([source-type source]
      (template-fn* (slurp source-type source))))
 
-(defn literals-length 
+(defn- literals-length 
   "The sum of the lengths of all strings in the parsed template. (This
   is the length of the template's expansion provided all parameters
   evaluate to the emtpy string.)" 
@@ -85,11 +85,11 @@ is defined."
        (map count)
        (reduce + 0)))
 
-(defn keyword->symbol 
+(defn- keyword->symbol 
   [k]
   (symbol (name k)))
 
-(defn params
+(defn- params
   "Return a map of param names (keywords) to symbols with the same name."
   [parsed-template]
   (->> parsed-template
@@ -97,7 +97,7 @@ is defined."
        (map #(vector % (keyword->symbol %)))
        (into {})))
 
-(defn param-counts
+(defn- param-counts
   "Return a map of param names (keywords) to the number of times they
 appear in parsed-template."
   [parsed-template]
@@ -105,7 +105,7 @@ appear in parsed-template."
        (filter keyword?)
        frequencies))
 
-(defn expected-length-expression
+(defn- expected-length-expression
   "Return an arithmetic expression which will compute the exact length
 of the expanded template, under the assumption that each of its parameters
 will be bound to a symbol of the same name in the scope in which this
