@@ -24,7 +24,7 @@ param-fn which return nil for :A. "
            {::param-name param-name
             ::param-fn param-fn}))
 
-(defn apply-template [parsed-template param-fn]
+(defn apply-template
   "Apply the parsed-template by calling f to provide the missing values.
 
 parsed-template is a sequence of strings and keywords.
@@ -35,6 +35,7 @@ param-fn is a function that maps from keywords to strings. The result of
     apply-template to throw an exception.
 
 The result of apply-template is a string."
+  [parsed-template param-fn]
   (->> (for [piece parsed-template]
            (if-not (keyword? piece)
              piece
@@ -85,25 +86,16 @@ is defined."
        (map count)
        (reduce + 0)))
 
-(defn- keyword->symbol 
-  [k]
-  (symbol (name k)))
+(def ^:private concat* (partial apply concat))
 
-(defn- params
-  "Return a map of param names (keywords) to symbols with the same name."
+(defn- all-params
   [parsed-template]
-  (->> parsed-template
-       (filter keyword?)
-       (map #(vector % (keyword->symbol %)))
-       (into {})))
+  (map (comp symbol name) 
+       (filter keyword? parsed-template)))
 
-(defn- param-counts
-  "Return a map of param names (keywords) to the number of times they
-appear in parsed-template."
+(defn- unique-params
   [parsed-template]
-  (->> parsed-template
-       (filter keyword?)
-       frequencies))
+  (set (all-params parsed-template)))
 
 (defn- expected-length-expression
   "Return an arithmetic expression which will compute the exact length
@@ -112,10 +104,10 @@ will be bound to a symbol of the same name in the scope in which this
 expression will be evaluated."
   [parsed-template]
   `(+ ~(literals-length parsed-template)
-      ~@(for [[p n] (param-counts parsed-template)]
-          (if  (= 1 n)
-            `(count ~(keyword->symbol p))
-            `(* ~n (count ~(keyword->symbol p)))))))
+           (let [~@(concat* 
+                    (for [p (unique-params parsed-template)] 
+                      [p `(count ~p)]))]
+             (int (+ ~@(all-params parsed-template))))))
 
 (defmacro template-fn
   "Create a function of one argument which implements the tempalte
@@ -139,21 +131,22 @@ is defined."
      (if-not (string? template)
        `(template-fn* ~template)
        (let [parsed-template (parse-template template)
-             params (params parsed-template)
-             param-fn (gensym)]
+             params (unique-params parsed-template)
+             param-fn (gensym)
+             length (expected-length-expression parsed-template)]
          `(fn [~param-fn]
-            (let [~@(interleave
-                     (for [[k s] params]  s)
-                     (for [[k s] params] `(~param-fn ~k)))]
+            (let [~@(concat* 
+                     (for [p params]
+                       [p `(~param-fn ~(keyword p))]))]
               ~@(when clojure.core/*assert*
-                  (for [[k s] params]
-                    `(when (nil? ~s)
-                       (throw (ex-missing-param ~k ~param-fn)))))
+                  (for [p params]
+                    `(when (nil? ~p)
+                       (throw (ex-missing-param ~(keyword p) ~param-fn)))))
               (str
-               (doto (StringBuilder. ~(expected-length-expression parsed-template))
+               (doto (StringBuilder. ~length)
                  ~@(for [p parsed-template]
                      `(.append ~(if (keyword? p)
-                                  (params p)
+                                  (symbol (name p))
                                   p))))))))))
   ([source-type source]
      (if-not (and (keyword? source-type) (string? source))
